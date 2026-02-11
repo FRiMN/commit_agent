@@ -16,7 +16,7 @@ print(f"Работаю в: {os.getcwd()}")
 print(f"Аргументы: {sys.argv[1:]}")
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "AnInterestingSurname/gemmasutra-mini-2b-v1:latest"
+DEFAULT_MODEL = "gemma3:4b"
 
 SYSTEM_PROMPT_TEMPLATE = """Ты помогаешь написать сообщение для git-коммита.
 Твоя задача — предложить краткое, информативное сообщение, описывающее суть изменений.
@@ -24,6 +24,9 @@ SYSTEM_PROMPT_TEMPLATE = """Ты помогаешь написать сообщ�
 Сообщение должно быть на русском или английском языке (определи по содержимому diff).
 Сообщение коммита указывай в самом конце своих сообщений после заголовка "Commit message:", 
 чтобы его можно было машинно-прочитать.
+
+В первом своём сообщении всегда добавляй сообщение коммита, 
+даже если у тебя возникли вопросы или затруднения.
 
 Ниже представлен diff изменений.
 
@@ -109,6 +112,10 @@ def ollama_chat_completion(
         raise OllamaError(f"Некорректный ответ от Ollama: {e}") from e
 
 
+def get_commit_message(message: str) -> str:
+    return message.split("Commit message:")[-1].strip()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Интерактивное создание сообщения для последнего коммита с помощью Ollama"
@@ -134,6 +141,11 @@ def main():
     print(diff[:500] + ("..." if len(diff) > 500 else ""))
     print()
 
+    print("\nВедите диалог с LLM для уточнения сообщения.")
+    print("Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.")
+    print("'exit' или Ctrl+C — выйти без сохранения.")
+    print()
+
     messages.append(
         {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE.format(diff)}
     )
@@ -143,14 +155,9 @@ def main():
 
     # Добавляем ответ ассистента в историю
     messages.append({"role": "assistant", "content": reply})
-    current_message = reply
+    current_message = get_commit_message(reply)
 
-    print("\n--- Предлагаемое сообщение коммита ---")
     print(reply)
-    print("---")
-    print("\nВедите диалог с LLM для уточнения сообщения.")
-    print("Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.")
-    print("'exit' или Ctrl+C — выйти без сохранения.")
 
     while True:
         try:
@@ -167,6 +174,10 @@ def main():
             print(diff)
             continue
 
+        if user_input.lower() == "message":
+            print(current_message)
+            continue
+
         if user_input.lower() in ("commit", "save"):
             break
 
@@ -180,7 +191,7 @@ def main():
         print("Думаю...")
         reply = ollama_chat_completion(messages, args.model, args.ollama_url)
         messages.append({"role": "assistant", "content": reply})
-        current_message = reply
+        current_message = get_commit_message(reply)
 
         print("\n--- Ответ LLM ---")
         print(reply)
