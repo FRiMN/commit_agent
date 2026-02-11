@@ -12,8 +12,25 @@ from typing import List, Dict
 
 import requests
 
-print(f"Работаю в: {os.getcwd()}")
-print(f"Аргументы: {sys.argv[1:]}")
+# ANSI color codes
+class Colors:
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    GRAY = '\033[90m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+
+# Function to print colored text
+def cprint(text: str, color: str = Colors.RESET, end: str = '\n'):
+    print(f"{color}{text}{Colors.RESET}", end=end)
+
+cprint(f"Работаю в: {os.getcwd()}", Colors.GRAY)
+cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "gemma3:4b"
@@ -22,8 +39,10 @@ SYSTEM_PROMPT_TEMPLATE = """Ты помогаешь написать сообщ�
 Твоя задача — предложить краткое, информативное сообщение, описывающее суть изменений.
 Используй повелительное наклонение (как в английском: 'Add', 'Fix', 'Update' и т.д.).
 Сообщение должно быть на русском или английском языке (определи по содержимому diff).
-Сообщение коммита указывай в самом конце своих сообщений после заголовка "Commit message:", 
-чтобы его можно было машинно-прочитать.
+
+ОЧЕНЬ ВАЖНО!!!: Сообщение коммита указывай в самом конце своих сообщений 
+после заголовка "Commit message:", чтобы его можно было машинно-прочитать.
+Не вставляй его в начало или в середину ответа.
 
 В первом своём сообщении всегда добавляй сообщение коммита, 
 даже если у тебя возникли вопросы или затруднения.
@@ -134,81 +153,84 @@ def main():
 
     messages = []
 
-    print("Получение diff последнего коммита...")
+    cprint("Получение diff последнего коммита...", Colors.YELLOW)
     diff = get_last_commit_diff()
 
-    print("Diff получен (первые 500 символов):")
-    print(diff[:500] + ("..." if len(diff) > 500 else ""))
-    print()
+    cprint("Diff получен (первые 500 символов):", Colors.YELLOW)
+    cprint(diff[:500] + ("..." if len(diff) > 500 else ""), Colors.GRAY)
+    cprint("")
 
-    print("\nВедите диалог с LLM для уточнения сообщения.")
-    print("Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.")
-    print("'exit' или Ctrl+C — выйти без сохранения.")
-    print()
+    cprint("Ведите диалог с LLM для уточнения сообщения.", Colors.BOLD)
+    cprint("Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.", Colors.BLUE)
+    cprint("'exit' или Ctrl+C — выйти без сохранения.", Colors.BLUE)
+    cprint("'diff' — показать полный diff", Colors.BLUE)
+    cprint("'message' — показать текущее сообщение коммита", Colors.BLUE)
+    cprint("")
 
     messages.append(
         {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE.format(diff)}
     )
 
-    print("Думаю...")
+    cprint("Думаю...", Colors.YELLOW)
     reply = ollama_chat_completion(messages, args.model, args.ollama_url)
 
     # Добавляем ответ ассистента в историю
     messages.append({"role": "assistant", "content": reply})
     current_message = get_commit_message(reply)
 
-    print(reply)
+    cprint(reply, Colors.MAGENTA)
 
     while True:
         try:
-            user_input = input("> ").strip()
+            cprint(">>> ", Colors.GREEN, end="")
+            user_input = input().strip()
         except (KeyboardInterrupt, EOFError):
-            print("\nВыход без сохранения.")
+            cprint("\nВыход без сохранения.", Colors.RED)
             sys.exit(0)
 
         if not user_input:
             continue
 
         if user_input.lower() == "diff":
-            print("Diff:")
-            print(diff)
+            cprint("Diff:", Colors.CYAN)
+            cprint(diff, Colors.GRAY)
             continue
 
         if user_input.lower() == "message":
-            print(current_message)
+            cprint("Текущее сообщение коммита:", Colors.CYAN)
+            cprint(current_message, Colors.YELLOW)
             continue
 
         if user_input.lower() in ("commit", "save"):
             break
 
         if user_input.lower() == "exit":
-            print("Выход без сохранения.")
+            cprint("Выход без сохранения.", Colors.RED)
             sys.exit(0)
 
         # Добавляем сообщение пользователя в историю
         messages.append({"role": "user", "content": user_input})
 
-        print("Думаю...")
+        cprint("Думаю...", Colors.YELLOW)
         reply = ollama_chat_completion(messages, args.model, args.ollama_url)
         messages.append({"role": "assistant", "content": reply})
         current_message = get_commit_message(reply)
 
-        print("\n--- Ответ LLM ---")
-        print(reply)
-        print("---\n")
+        cprint(reply, Colors.MAGENTA)
 
     # Сохраняем сообщение через amend
     if not current_message.strip():
-        print("Ошибка: сообщение коммита пустое. Операция отменена.")
+        cprint("Ошибка: сообщение коммита пустое. Операция отменена.", Colors.RED)
         sys.exit(1)
 
-    print(f"\nСохраняем сообщение:\n{current_message}")
+    cprint(f"\nСохраняем сообщение:", Colors.GREEN + Colors.BOLD)
+    cprint(current_message, Colors.YELLOW)
     try:
         # Выполняем amend с новым сообщением
         run_git_command(["commit", "--amend", "-m", current_message])
-        print("Сообщение коммита успешно обновлено.")
+        cprint("Сообщение коммита успешно обновлено.", Colors.GREEN)
     except GitError as e:
-        print(f"Ошибка при выполнении git commit --amend: {e}")
+        cprint(f"Ошибка при выполнении git commit --amend: {e}", Colors.RED)
         sys.exit(1)
 
 if __name__ == "__main__":
