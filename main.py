@@ -8,6 +8,7 @@ import argparse
 import os
 import subprocess
 import sys
+import tempfile
 from typing import List, Dict
 
 import requests
@@ -37,6 +38,7 @@ cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_PAGER = "none"  # none (спрашивать), less, cat (вывод в консоль)
 
 SYSTEM_PROMPT_TEMPLATE = """# Commit Message Composer
 
@@ -148,6 +150,32 @@ def get_commit_message(message: str) -> str:
     return message.split("Commit message:")[-1].strip()
 
 
+def show_diff_with_pager(diff: str) -> None:
+    cprint("Использовать ли less? [Y/n]: ", Colors.CYAN, end="")
+    try:
+        ans = input().strip()
+        if not ans or ans.lower() in ("y", "yes"):
+            pager = "less"
+        else:
+            cprint("Команда: ", Colors.CYAN, end="")
+            pager = input().strip()
+    except (KeyboardInterrupt, EOFError):
+        pager = ""
+
+    if not pager:
+        return
+
+    fd, temp_file = tempfile.mkstemp(text=True)
+    try:
+        os.write(fd, diff.encode())
+        os.close(fd)
+        parts = pager.split()
+        parts.append(temp_file)
+        subprocess.call(parts)
+    finally:
+        os.unlink(temp_file)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Интерактивное создание сообщения для последнего коммита с помощью Ollama"
@@ -207,8 +235,7 @@ def main():
             continue
 
         if user_input.lower() == "diff":
-            cprint("Diff:", Colors.CYAN)
-            cprint(diff, Colors.GRAY)
+            show_diff_with_pager(diff)
             continue
 
         if user_input.lower() == "message":
