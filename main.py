@@ -12,22 +12,25 @@ from typing import List, Dict
 
 import requests
 
+
 # ANSI color codes
 class Colors:
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    MAGENTA = '\033[95m'
-    CYAN = '\033[96m'
-    WHITE = '\033[97m'
-    GRAY = '\033[90m'
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    MAGENTA = "\033[95m"
+    CYAN = "\033[96m"
+    WHITE = "\033[97m"
+    GRAY = "\033[90m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+
 
 # Function to print colored text
-def cprint(text: str, color: str = Colors.RESET, end: str = '\n'):
+def cprint(text: str, color: str = Colors.RESET, end: str = "\n"):
     print(f"{color}{text}{Colors.RESET}", end=end)
+
 
 cprint(f"Работаю в: {os.getcwd()}", Colors.GRAY)
 cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
@@ -35,32 +38,43 @@ cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3:8b"
 
-SYSTEM_PROMPT_TEMPLATE = """Ты агент-специалист в IT.
-Ты помогаешь написать сообщение для git-коммита.
-Твоя задача — предложить краткое, информативное сообщение, описывающее суть изменений.
-Используй повелительное наклонение (как в английском: 'Add', 'Fix', 'Update' и т.д.).
-Сообщение должно быть на русском или английском языке (определи по содержимому diff).
-Переноси текст на новую строку, если он длиннее 80 символов.
+SYSTEM_PROMPT_TEMPLATE = """# Commit Message Composer
 
-ОЧЕНЬ ВАЖНО!!!: Сообщение коммита указывай в самом конце своих сообщений 
-после заголовка "Commit message:", чтобы его можно было машинно-прочитать.
-Не вставляй его в начало или в середину ответа.
+Ты эксперт по git-коммитам. Твоя задача — помочь написать идеальное сообщение коммита.
 
-В первом своём сообщении всегда добавляй сообщение коммита, 
-даже если у тебя возникли вопросы или затруднения.
+## Твои обязанности:
+1. Проанализировать полученный diff изменений
+2. Предложить краткое, информативное сообщение коммита на русском или английском языке
+3. Использовать повелительное наклонение (Add, Fix, Update, и т.д.)
+4. Переносить текст на новую строку, если он длиннее 80 символов
 
-Пользователь может передавать уточнения или запросы - исполняй их 
-и модифицируй сообщение коммита, если это необходимо.
+## Форматирование:
+Всегда указывай сообщение коммита в самом конце после "Commit message:" 
+например: "Commit message: Add new authentication feature"
+
+## Правила ведения диалога:
+- НЕ ЗАБЫВАЙ: Вся история содержит оригинальный diff — ВСЕГДА опирайся на него
+- При уточнениях от пользователя сохраняй контекст оригинального diff
+- Не пересматривай diff, используй его как источник истины
+- Каждый ответ должен учитывать весь предыдущий контекст диалога
+
+## Порядок работы:
+1. Сразу в первом сообщении предложи вариант commit message (даже если есть вопросы)
+2. Отвечай на вопросы и уточнения пользователя
+3. Модифицируй commit message по запросу
+4. Веди диалог естественно, не теряя контекст diff
 """
 
 
 class GitError(Exception):
     """Ошибка выполнения git-команды."""
+
     pass
 
 
 class OllamaError(Exception):
     """Ошибка взаимодействия с Ollama."""
+
     pass
 
 
@@ -160,18 +174,17 @@ def main():
     cprint("")
 
     cprint("Ведите диалог с LLM для уточнения сообщения.", Colors.BOLD)
-    cprint("Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.", Colors.BLUE)
+    cprint(
+        "Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.",
+        Colors.BLUE,
+    )
     cprint("'exit' или Ctrl+C — выйти без сохранения.", Colors.BLUE)
     cprint("'diff' — показать полный diff", Colors.BLUE)
     cprint("'message' — показать текущее сообщение коммита", Colors.BLUE)
     cprint("")
 
-    messages.append(
-        {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE}
-    )
-    messages.append(
-        {"role": "user", "content": f"Вот diff изменений: {diff}"}
-    )
+    messages.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE})
+    messages.append({"role": "user", "content": f"Вот diff изменений: {diff}"})
 
     cprint("Думаю...", Colors.YELLOW)
     reply = ollama_chat_completion(messages, args.model, args.ollama_url)
@@ -234,6 +247,7 @@ def main():
     except GitError as e:
         cprint(f"Ошибка при выполнении git commit --amend: {e}", Colors.RED)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
