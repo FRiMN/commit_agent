@@ -224,12 +224,12 @@ def main():
 
     cprint("Ведите диалог с LLM для уточнения сообщения.", Colors.BOLD)
     cprint(
-        "Команды: 'commit' или 'save' — сохранить текущее предложение и выйти.",
+        "Команды: '/commit' или '/save' — сохранить текущее предложение и выйти.",
         Colors.BLUE,
     )
-    cprint("'exit' или Ctrl+C — выйти без сохранения.", Colors.BLUE)
-    cprint("'diff' — показать полный diff", Colors.BLUE)
-    cprint("'message' — показать текущее сообщение коммита", Colors.BLUE)
+    cprint("'/exit' или Ctrl+C — выйти без сохранения.", Colors.BLUE)
+    cprint("'/diff' — показать полный diff", Colors.BLUE)
+    cprint("'/message' — показать текущее сообщение коммита", Colors.BLUE)
     cprint("")
 
     messages.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE})
@@ -259,19 +259,19 @@ def main():
         if not user_input:
             continue
 
-        if user_input.lower() == "diff":
+        if user_input.lower() == "/diff":
             show_diff_with_pager(diff)
             continue
 
-        if user_input.lower() == "message":
+        if user_input.lower() == "/message":
             cprint("Текущее сообщение коммита:", Colors.CYAN)
             cprint(current_message, Colors.YELLOW)
             continue
 
-        if user_input.lower() in ("commit", "save"):
+        if user_input.lower() in ("/commit", "/save"):
             break
 
-        if user_input.lower() == "exit":
+        if user_input.lower() == "/exit":
             cprint("Выход без сохранения.", Colors.RED)
             sys.exit(0)
 
