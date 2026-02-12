@@ -41,13 +41,17 @@ DEFAULT_MODEL = "qwen3:8b"
 
 SYSTEM_PROMPT_TEMPLATE = """# Commit Message Composer
 
-Ты эксперт по git-коммитам. Твоя задача — помочь написать идеальное сообщение коммита.
+Ты эксперт по git-коммитам. Твоя задача - помочь написать идеальное сообщение коммита.
 
 ## Твои обязанности:
 1. Проанализировать полученный diff изменений
 2. Предложить краткое, информативное сообщение коммита на русском или английском языке
-3. Использовать повелительное наклонение (Add, Fix, Update, и т.д.)
-4. Переносить текст на новую строку, если он длиннее 80 символов
+3. Переносить текст на новую строку, если он длиннее 80 символов
+
+## Анализ стиля коммитов:
+В начале диалога я предоставлю примеры сообщений коммитов из вашего репозитория.
+Проанализируй их и имитируй обнаруженный стиль (язык, форма глагола, форматирование) в своём предложении.
+Если примеров нет, используй стандартные best practices для git-коммитов.
 
 ## Форматирование:
 Всегда указывай сообщение коммита в самом конце после "Commit message:" 
@@ -121,6 +125,23 @@ def get_last_commit_diff() -> str:
     return diff
 
 
+def get_commit_messages_samples() -> str:
+    """
+    Возвращает форматированные примеры сообщений коммитов из репозитория.
+    Получает последние 20 сообщений и форматирует их как список.
+    """
+    try:
+        messages = run_git_command(["log", "--format=%s", "-20"], check=False)
+        if not messages:
+            return ""
+
+        lines = messages.split("\n")
+        examples = "\n".join([f"- {msg}" for msg in lines if msg])
+        return f"Вот примеры сообщений коммитов из вашего репозитория:\n{examples}"
+    except GitError:
+        return ""
+
+
 def ollama_chat_completion(
     messages: List[Dict[str, str]],
     model: str,
@@ -192,6 +213,7 @@ def main():
     args = parser.parse_args()
 
     messages = []
+    commit_examples = get_commit_messages_samples()
 
     cprint("Получение diff последнего коммита...", Colors.YELLOW)
     diff = get_last_commit_diff()
@@ -211,6 +233,10 @@ def main():
     cprint("")
 
     messages.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE})
+
+    if commit_examples:
+        messages.append({"role": "user", "content": commit_examples})
+
     messages.append({"role": "user", "content": f"Вот diff изменений: {diff}"})
 
     cprint("Думаю...", Colors.YELLOW)
