@@ -170,7 +170,7 @@ def main():
         {"role": "system", "content": SYSTEM_PROMPT_TEMPLATE}
     )
     messages.append(
-        {"role": "assistant", "content": f"Вот diff изменений: {diff}"}
+        {"role": "user", "content": f"Вот diff изменений: {diff}"}
     )
 
     cprint("Думаю...", Colors.YELLOW)
