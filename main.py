@@ -38,7 +38,6 @@ cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3:8b"
-DEFAULT_PAGER = "none"  # none (спрашивать), less, cat (вывод в консоль)
 
 SYSTEM_PROMPT_TEMPLATE = """# Commit Message Composer
 
