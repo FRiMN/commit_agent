@@ -231,6 +231,7 @@ def main():
     cprint("'/diff' — показать полный diff", Colors.BLUE)
     cprint("'/message' — показать текущее сообщение коммита", Colors.BLUE)
     cprint("'/help' — показать список команд", Colors.BLUE)
+    cprint("'/undo' — отменить последнее изменение сообщения", Colors.BLUE)
     cprint("")
 
     messages.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE})
@@ -283,6 +284,32 @@ def main():
             cprint("/diff — показать полный diff", Colors.BLUE)
             cprint("/message — показать текущее сообщение", Colors.BLUE)
             cprint("/help — показать это сообщение", Colors.BLUE)
+            cprint("/undo — отменить последнее изменение", Colors.BLUE)
+            continue
+
+        if user_input.lower() == "/undo":
+            # Считаем количество сообщений ассистента (кроме системного)
+            assistant_messages = [msg for msg in messages if msg["role"] == "assistant"]
+            if len(assistant_messages) <= 1:  # Только начальное сообщение
+                cprint("Нечего отменять. История пуста.", Colors.YELLOW)
+                continue
+
+            # Удаляем последнюю пару user-assistant
+            last_role = None
+            while messages and messages[-1]["role"] != "assistant":
+                last_role = messages.pop()["role"]
+
+            if messages and messages[-1]["role"] == "assistant":
+                messages.pop()  # Удаляем последнее сообщение ассистента
+
+            # Восстанавливаем предыдущее сообщение
+            assistant_messages = [msg for msg in messages if msg["role"] == "assistant"]
+            if assistant_messages:
+                current_message = get_commit_message(assistant_messages[-1]["content"])
+            else:
+                current_message = ""
+
+            cprint("Последнее изменение отменено.", Colors.GREEN)
             continue
 
         # Добавляем сообщение пользователя в историю
