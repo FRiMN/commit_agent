@@ -196,6 +196,27 @@ def show_diff_with_pager(diff: str) -> None:
         os.unlink(temp_file)
 
 
+def show_reply(reply: str, current_commit_message: str):
+    cprint(reply, Colors.MAGENTA)
+
+    # Автоматически показываем текущее сообщение коммита после каждого ответа ассистента
+    cprint("\nТекущее сообщение коммита:", Colors.CYAN)
+    cprint(current_commit_message, Colors.YELLOW)
+    cprint("", Colors.RESET)
+
+
+def assistant_think(messages: list, args) -> str:
+    cprint("Думаю...", Colors.YELLOW)
+    reply = ollama_chat_completion(messages, args.model, args.ollama_url)
+
+    # Добавляем ответ ассистента в историю
+    messages.append({"role": "assistant", "content": reply})
+    current_message = get_commit_message(reply)
+
+    show_reply(reply, current_message)
+    return current_message
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Интерактивное создание сообщения для последнего коммита с помощью Ollama"
@@ -241,14 +262,7 @@ def main():
 
     messages.append({"role": "user", "content": f"Вот diff изменений: {diff}"})
 
-    cprint("Думаю...", Colors.YELLOW)
-    reply = ollama_chat_completion(messages, args.model, args.ollama_url)
-
-    # Добавляем ответ ассистента в историю
-    messages.append({"role": "assistant", "content": reply})
-    current_message = get_commit_message(reply)
-
-    cprint(reply, Colors.MAGENTA)
+    current_message = assistant_think(messages, args)
 
     while True:
         try:
@@ -315,12 +329,7 @@ def main():
         # Добавляем сообщение пользователя в историю
         messages.append({"role": "user", "content": user_input})
 
-        cprint("Думаю...", Colors.YELLOW)
-        reply = ollama_chat_completion(messages, args.model, args.ollama_url)
-        messages.append({"role": "assistant", "content": reply})
-        current_message = get_commit_message(reply)
-
-        cprint(reply, Colors.MAGENTA)
+        current_message = assistant_think(messages, args)
 
     # Сохраняем сообщение через amend
     if not current_message.strip():
