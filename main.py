@@ -230,6 +230,7 @@ def main():
     cprint("'/exit' или Ctrl+C — выйти без сохранения.", Colors.BLUE)
     cprint("'/diff' — показать полный diff", Colors.BLUE)
     cprint("'/message' — показать текущее сообщение коммита", Colors.BLUE)
+    cprint("'/help' — показать список команд", Colors.BLUE)
     cprint("")
 
     messages.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE})
@@ -274,6 +275,15 @@ def main():
         if user_input.lower() == "/exit":
             cprint("Выход без сохранения.", Colors.RED)
             sys.exit(0)
+
+        if user_input.lower() == "/help":
+            cprint("Доступные команды:", Colors.CYAN)
+            cprint("/commit или /save — сохранить и выйти", Colors.BLUE)
+            cprint("/exit — выйти без сохранения", Colors.BLUE)
+            cprint("/diff — показать полный diff", Colors.BLUE)
+            cprint("/message — показать текущее сообщение", Colors.BLUE)
+            cprint("/help — показать это сообщение", Colors.BLUE)
+            continue
 
         # Добавляем сообщение пользователя в историю
         messages.append({"role": "user", "content": user_input})
