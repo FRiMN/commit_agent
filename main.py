@@ -33,7 +33,7 @@ cprint(f"Работаю в: {os.getcwd()}", Colors.GRAY)
 cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "gemma3n:latest"
+DEFAULT_MODEL = "qwen3:8b"
 
 SYSTEM_PROMPT_TEMPLATE = """Ты агент-специалист в IT.
 Ты помогаешь написать сообщение для git-коммита.
