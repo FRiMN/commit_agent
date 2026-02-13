@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Iterable, TYPE_CHECKING
 
 from git_provider import AbstractGitProvider
@@ -92,7 +93,7 @@ class HelpCommand(AbstractCommand):
             )
         return self._command_dispatcher.commands
 
-    def set_command_dispatcher(self, command_dispatcher: "CommandDispatcher"):
+    def set_command_dispatcher(self, command_dispatcher: CommandDispatcher):
         self._command_dispatcher = command_dispatcher
 
     def __call__(self):
