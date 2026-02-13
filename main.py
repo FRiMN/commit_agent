@@ -4,42 +4,17 @@
 # ]
 # requires-python = ">=3.8"
 # ///
-import argparse
-import os
-import subprocess
 import sys
-import tempfile
-from typing import List, Dict
 
-import requests
+from commands.commands import UndoCommand, ExitCommand, SaveCommand, CommitCommand, ShowDiffCommand
+from commands.dispatcher import CommandDispatcher
+from git_provider import ShellGitProvider
+from history import History, HistoryMessage, HistoryMessageRole
+from llm_providers.ollama import OllamaLlmProvider
+from pager_provider import LessPagerProvider
+from view import View
 
-
-# ANSI color codes
-class Colors:
-    RED = "\033[91m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    MAGENTA = "\033[95m"
-    CYAN = "\033[96m"
-    WHITE = "\033[97m"
-    GRAY = "\033[90m"
-    RESET = "\033[0m"
-    BOLD = "\033[1m"
-
-
-# Function to print colored text
-def cprint(text: str, color: str = Colors.RESET, end: str = "\n"):
-    print(f"{color}{text}{Colors.RESET}", end=end)
-
-
-cprint(f"Работаю в: {os.getcwd()}", Colors.GRAY)
-cprint(f"Аргументы: {sys.argv[1:]}", Colors.GRAY)
-
-DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "qwen3:8b"
-
-SYSTEM_PROMPT_TEMPLATE = """# Commit Message Composer
+SYSTEM_PROMPT = """# Commit Message Composer
 
 Ты эксперт по git-коммитам. Твоя задача - помочь написать идеальное сообщение коммита.
 
@@ -70,282 +45,63 @@ SYSTEM_PROMPT_TEMPLATE = """# Commit Message Composer
 4. Веди диалог естественно, не теряя контекст diff
 """
 
+view = View()
+llm_provider = OllamaLlmProvider("qwen3:8b", "http://localhost:11434", view)
+history = History(llm_provider)
+git_provider = ShellGitProvider()
+pager = LessPagerProvider()
 
-class GitError(Exception):
-    """Ошибка выполнения git-команды."""
-
-    pass
-
-
-class OllamaError(Exception):
-    """Ошибка взаимодействия с Ollama."""
-
-    pass
-
-
-def run_git_command(args: List[str], check: bool = True) -> str:
-    """
-    Выполняет git-команду и возвращает stdout.
-    При ошибке выбрасывает GitError.
-    """
-    try:
-        proc = subprocess.run(
-            ["git"] + args,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=check,
-        )
-        if proc.returncode != 0:
-            raise GitError(f"git {' '.join(args)}: {proc.stderr.strip()}")
-        return proc.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        raise GitError(f"git {' '.join(args)}: {e.stderr.strip()}") from e
-    except FileNotFoundError as e:
-        raise GitError("Git не установлен или не найден в PATH") from e
+commands = (
+    UndoCommand(history, view),
+    ExitCommand(),
+    SaveCommand(history, git_provider, view),
+    CommitCommand(history, git_provider, view),
+    ShowDiffCommand(git_provider, pager),
+)
+command_dispatcher = CommandDispatcher(commands)
 
 
-def get_last_commit_diff() -> str:
-    """
-    Возвращает diff последнего коммита (изменения относительно родителя).
-    Для первого коммита возвращает diff всего коммита.
-    """
-    # Проверяем, есть ли родительский коммит
-    try:
-        run_git_command(["rev-parse", "HEAD^"], check=False)
-        has_parent = True
-    except GitError:
-        has_parent = False
-
-    if has_parent:
-        diff = run_git_command(["diff", "HEAD^", "HEAD", "--no-color"])
-    else:
-        # Первый коммит: берём diff из самого коммита
-        diff = run_git_command(["show", "--format=", "--no-color", "--patch", "HEAD"])
-    return diff
+def assistant_think(user_input: str | None):
+    view.show_thinking()
+    reply = history.assistant_think(user_input)
+    view.show_reply(reply)
+    view.show_current_commit_message(history.current_message)
 
 
-def get_commit_messages_samples() -> str:
-    """
-    Возвращает форматированные примеры сообщений коммитов из репозитория.
-    Получает последние 20 сообщений и форматирует их как список.
-    """
-    try:
-        messages = run_git_command(["log", "--format=%s", "-20"], check=False)
-        if not messages:
-            return ""
-
-        lines = messages.split("\n")
-        examples = "\n".join([f"- {msg}" for msg in lines if msg])
-        return f"Вот примеры сообщений коммитов из вашего репозитория:\n{examples}"
-    except GitError:
-        return ""
-
-
-def ollama_chat_completion(
-    messages: List[Dict[str, str]],
-    model: str,
-    url: str,
-) -> str:
-    """
-    Отправляет запрос к /api/chat Ollama и возвращает текст ответа ассистента.
-    """
-    payload = {
-        "model": model,
-        "messages": messages,
-        "stream": False,
-    }
-    try:
-        resp = requests.post(f"{url}/api/chat", json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["message"]["content"]
-    except requests.exceptions.RequestException as e:
-        raise OllamaError(f"Ошибка соединения с Ollama: {e}") from e
-    except (KeyError, ValueError) as e:
-        raise OllamaError(f"Некорректный ответ от Ollama: {e}") from e
-
-
-def get_commit_message(message: str) -> str:
-    return message.split("Commit message:")[-1].strip()
-
-
-def show_diff_with_pager(diff: str) -> None:
-    cprint("Использовать ли less? [Y/n]: ", Colors.CYAN, end="")
-    try:
-        ans = input().strip()
-        if not ans or ans.lower() in ("y", "yes"):
-            pager = "less"
-        else:
-            cprint("Команда: ", Colors.CYAN, end="")
-            pager = input().strip()
-    except (KeyboardInterrupt, EOFError):
-        pager = ""
-
-    if not pager:
-        return
-
-    fd, temp_file = tempfile.mkstemp(text=True)
-    try:
-        os.write(fd, diff.encode())
-        os.close(fd)
-        parts = pager.split()
-        parts.append(temp_file)
-        subprocess.call(parts)
-    finally:
-        os.unlink(temp_file)
-
-
-def show_reply(reply: str, current_commit_message: str):
-    cprint(reply, Colors.MAGENTA)
-
-    # Автоматически показываем текущее сообщение коммита после каждого ответа ассистента
-    cprint("\nТекущее сообщение коммита:", Colors.CYAN)
-    cprint(current_commit_message, Colors.YELLOW)
-    cprint("", Colors.RESET)
-
-
-def assistant_think(messages: list, args) -> str:
-    cprint("Думаю...", Colors.YELLOW)
-    reply = ollama_chat_completion(messages, args.model, args.ollama_url)
-
-    # Добавляем ответ ассистента в историю
-    messages.append({"role": "assistant", "content": reply})
-    current_message = get_commit_message(reply)
-
-    show_reply(reply, current_message)
-    return current_message
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Интерактивное создание сообщения для последнего коммита с помощью Ollama"
-    )
-    parser.add_argument(
-        "--model",
-        default=os.environ.get("OLLAMA_MODEL", DEFAULT_MODEL),
-        help=f"Модель Ollama (по умолчанию: {DEFAULT_MODEL})",
-    )
-    parser.add_argument(
-        "--ollama-url",
-        default=os.environ.get("OLLAMA_URL", DEFAULT_OLLAMA_URL),
-        help=f"URL сервера Ollama (по умолчанию: {DEFAULT_OLLAMA_URL})",
-    )
-    args = parser.parse_args()
-
-    messages = []
-    commit_examples = get_commit_messages_samples()
-
-    cprint("Получение diff последнего коммита...", Colors.YELLOW)
-    diff = get_last_commit_diff()
-
-    cprint("Diff получен (первые 500 символов):", Colors.YELLOW)
-    cprint(diff[:500] + ("..." if len(diff) > 500 else ""), Colors.GRAY)
-    cprint("")
-
-    cprint("Ведите диалог с LLM для уточнения сообщения.", Colors.BOLD)
-    cprint(
-        "Команды: '/commit' или '/save' — сохранить текущее предложение и выйти.",
-        Colors.BLUE,
-    )
-    cprint("'/exit' или Ctrl+C — выйти без сохранения.", Colors.BLUE)
-    cprint("'/diff' — показать полный diff", Colors.BLUE)
-    cprint("'/message' — показать текущее сообщение коммита", Colors.BLUE)
-    cprint("'/help' — показать список команд", Colors.BLUE)
-    cprint("'/undo' — отменить последнее изменение сообщения", Colors.BLUE)
-    cprint("")
-
-    messages.append({"role": "system", "content": SYSTEM_PROMPT_TEMPLATE})
-
-    if commit_examples:
-        messages.append({"role": "user", "content": commit_examples})
-
-    messages.append({"role": "user", "content": f"Вот diff изменений: {diff}"})
-
-    current_message = assistant_think(messages, args)
-
+def loop():
+    user_input = None
+    skip_think = False
     while True:
-        try:
-            cprint(">>> ", Colors.GREEN, end="")
-            user_input = input().strip()
-        except (KeyboardInterrupt, EOFError):
-            cprint("\nВыход без сохранения.", Colors.RED)
-            sys.exit(0)
+        if not skip_think:
+            assistant_think(user_input)
 
-        if not user_input:
-            continue
+        view.show_user_input_prefix()
+        user_input = view.wait_user_input()
 
-        if user_input.lower() == "/diff":
-            show_diff_with_pager(diff)
-            continue
+        skip_think = False
+        if command_dispatcher.is_command(user_input):
+            command_dispatcher(user_input)
+            skip_think = True
 
-        if user_input.lower() == "/message":
-            cprint("Текущее сообщение коммита:", Colors.CYAN)
-            cprint(current_message, Colors.YELLOW)
-            continue
-
-        if user_input.lower() in ("/commit", "/save"):
-            break
-
-        if user_input.lower() == "/exit":
-            cprint("Выход без сохранения.", Colors.RED)
-            sys.exit(0)
-
-        if user_input.lower() == "/help":
-            cprint("Доступные команды:", Colors.CYAN)
-            cprint("/commit или /save — сохранить и выйти", Colors.BLUE)
-            cprint("/exit — выйти без сохранения", Colors.BLUE)
-            cprint("/diff — показать полный diff", Colors.BLUE)
-            cprint("/message — показать текущее сообщение", Colors.BLUE)
-            cprint("/help — показать это сообщение", Colors.BLUE)
-            cprint("/undo — отменить последнее изменение", Colors.BLUE)
-            continue
-
-        if user_input.lower() == "/undo":
-            # Считаем количество сообщений ассистента (кроме системного)
-            assistant_messages = [msg for msg in messages if msg["role"] == "assistant"]
-            if len(assistant_messages) <= 1:  # Только начальное сообщение
-                cprint("Нечего отменять. История пуста.", Colors.YELLOW)
-                continue
-
-            # Удаляем последнюю пару user-assistant
-            last_role = None
-            while messages and messages[-1]["role"] != "assistant":
-                last_role = messages.pop()["role"]
-
-            if messages and messages[-1]["role"] == "assistant":
-                messages.pop()  # Удаляем последнее сообщение ассистента
-
-            # Восстанавливаем предыдущее сообщение
-            assistant_messages = [msg for msg in messages if msg["role"] == "assistant"]
-            if assistant_messages:
-                current_message = get_commit_message(assistant_messages[-1]["content"])
-            else:
-                current_message = ""
-
-            cprint("Последнее изменение отменено.", Colors.GREEN)
-            continue
-
-        # Добавляем сообщение пользователя в историю
-        messages.append({"role": "user", "content": user_input})
-
-        current_message = assistant_think(messages, args)
-
-    # Сохраняем сообщение через amend
-    if not current_message.strip():
-        cprint("Ошибка: сообщение коммита пустое. Операция отменена.", Colors.RED)
-        sys.exit(1)
-
-    cprint(f"\nСохраняем сообщение:", Colors.GREEN + Colors.BOLD)
-    cprint(current_message, Colors.YELLOW)
-    try:
-        # Выполняем amend с новым сообщением
-        run_git_command(["commit", "--amend", "-m", current_message])
-        cprint("Сообщение коммита успешно обновлено.", Colors.GREEN)
-    except GitError as e:
-        cprint(f"Ошибка при выполнении git commit --amend: {e}", Colors.RED)
-        sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=SYSTEM_PROMPT)
+    history.talk_history.append(sys_msg)
+
+    diff = git_provider.get_last_diff()
+    diff_msg = HistoryMessage(role=HistoryMessageRole.user, content=f"Вот diff изменений: {diff}")
+    history.talk_history.append(diff_msg)
+
+    samples = git_provider.get_commit_messages_samples()
+    if samples:
+        samples_msg = HistoryMessage(
+            role=HistoryMessageRole.user,
+            content=f"Вот примеры сообщений коммитов из вашего репозитория:\n{samples}"
+        )
+        history.talk_history.append(samples_msg)
+
+    try:
+        loop()
+    except (KeyboardInterrupt, EOFError):
+        view.show_error("Прерываю выполнение.")
