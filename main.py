@@ -29,8 +29,9 @@ SYSTEM_PROMPT = """# Commit Message Composer
 Если примеров нет, используй стандартные best practices для git-коммитов.
 
 ## Форматирование:
-Всегда указывай сообщение коммита в самом конце после "Commit message:" 
-например: "Commit message: Add new authentication feature"
+- Всегда указывай сообщение коммита в самом конце после "Commit message:" 
+- Заканчивай сообщение паттерном "@@@@"
+- например: "Commit message: Add new authentication feature @@@@"
 
 ## Правила ведения диалога:
 - НЕ ЗАБЫВАЙ: Вся история содержит оригинальный diff — ВСЕГДА опирайся на него
@@ -46,7 +47,11 @@ SYSTEM_PROMPT = """# Commit Message Composer
 """
 
 view = View()
-llm_provider = OllamaLlmProvider("mistral-large-3:675b-cloud", "http://localhost:11434", view)
+llm_provider = OllamaLlmProvider(
+    "mistral-large-3:675b-cloud",
+    "http://localhost:11434",
+    view
+)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()

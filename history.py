@@ -30,7 +30,7 @@ class History(object):
             return ""
 
         message = self.talk_history[-1].content
-        return message.split("Commit message:")[-1].strip()
+        return message.split("Commit message:")[-1].strip().split("@@@@")[0]
 
     def assistant_think(self, prompt: str | None) -> str:
         if prompt:
@@ -42,4 +42,4 @@ class History(object):
         assist_msg = HistoryMessage(role=HistoryMessageRole.assistant, content=reply)
         self.talk_history.append(assist_msg)
 
-        return reply.split("Commit message:")[0]
+        return reply.split("Commit message:")[0] + reply.split("@@@@")[1]
