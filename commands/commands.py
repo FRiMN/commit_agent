@@ -8,6 +8,7 @@ from view import View
 
 class AbstractCommand(object):
     trigger: str
+    is_terminator = False
 
     def __call__(self):
         raise NotImplementedError()
@@ -28,13 +29,15 @@ class UndoCommand(AbstractCommand):
 
 class ExitCommand(AbstractCommand):
     trigger = "/exit"
+    is_terminator = True
 
     def __call__(self):
-        raise KeyboardInterrupt()
+        pass
 
 
 class SaveCommand(AbstractCommand):
     trigger = "/save"
+    is_terminator = True
 
     def __init__(self, history: History, git_provider: AbstractGitProvider, view: View):
         self.provider = git_provider

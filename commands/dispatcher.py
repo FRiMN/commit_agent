@@ -12,6 +12,9 @@ class CommandDispatcher(object):
     def is_command(self, trigger: str) -> bool:
         return bool(self.get_command(trigger))
 
+    def is_terminator(self, trigger: str) -> bool:
+        return self.get_command(trigger).is_terminator
+
     def get_command(self, trigger: str) -> AbstractCommand | None:
         try:
             command = next(iter(

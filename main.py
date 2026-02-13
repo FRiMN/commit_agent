@@ -46,7 +46,7 @@ SYSTEM_PROMPT = """# Commit Message Composer
 """
 
 view = View()
-llm_provider = OllamaLlmProvider("qwen3:8b", "http://localhost:11434", view)
+llm_provider = OllamaLlmProvider("mistral-large-3:675b-cloud", "http://localhost:11434", view)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
@@ -83,15 +83,13 @@ def loop():
             command_dispatcher(user_input)
             skip_think = True
 
+            if command_dispatcher.is_terminator(user_input):
+                break
 
 
 if __name__ == "__main__":
     sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=SYSTEM_PROMPT)
     history.talk_history.append(sys_msg)
-
-    diff = git_provider.get_last_diff()
-    diff_msg = HistoryMessage(role=HistoryMessageRole.user, content=f"Вот diff изменений: {diff}")
-    history.talk_history.append(diff_msg)
 
     samples = git_provider.get_commit_messages_samples()
     if samples:
@@ -100,6 +98,13 @@ if __name__ == "__main__":
             content=f"Вот примеры сообщений коммитов из вашего репозитория:\n{samples}"
         )
         history.talk_history.append(samples_msg)
+
+    diff = git_provider.get_last_diff()
+    diff_msg = HistoryMessage(
+        role=HistoryMessageRole.user,
+        content=f"Вот diff изменений:\n{diff}"
+    )
+    history.talk_history.append(diff_msg)
 
     try:
         loop()
