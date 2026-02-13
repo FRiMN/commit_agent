@@ -76,6 +76,22 @@ class ShowDiffCommand(AbstractCommand):
         self.pager(diff)
 
 
+class HistoryCommand(AbstractCommand):
+    trigger = "/history"
+    help_text = "Show the full conversation history in less."
+
+    def __init__(self, history: History, pager: AbstractPagerProvider):
+        self.history = history
+        self.pager = pager
+
+    def __call__(self):
+        history_str = "\n\n".join(
+            f"[{msg.role.value.upper()}]: {msg.content}"
+            for msg in self.history.talk_history
+        )
+        self.pager(history_str)
+
+
 class HelpCommand(AbstractCommand):
     trigger = "/help"
     help_text = "Show a list of available commands and their descriptions."

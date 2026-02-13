@@ -4,17 +4,15 @@
 # ]
 # requires-python = ">=3.8"
 # ///
-import sys
-
 from commands.dispatcher import CommandDispatcher
 from commands.commands import (
-    AbstractCommand,
     CommitCommand,
     ExitCommand,
     HelpCommand,
     SaveCommand,
     ShowDiffCommand,
     UndoCommand,
+    HistoryCommand,
 )
 from git_provider import ShellGitProvider
 from history import History, HistoryMessage, HistoryMessageRole
@@ -56,7 +54,7 @@ SYSTEM_PROMPT = """# Commit Message Composer
 
 view = View()
 llm_provider = OllamaLlmProvider(
-    "mistral-large-3:675b-cloud", "http://localhost:11434", view
+    "qwen2.5-coder:14b", "http://localhost:11434", view
 )
 history = History(llm_provider)
 git_provider = ShellGitProvider()
@@ -69,6 +67,7 @@ commands = (
     SaveCommand(history, git_provider, view),
     CommitCommand(history, git_provider, view),
     ShowDiffCommand(git_provider, pager),
+    HistoryCommand(history, pager),
     help_command,
 )
 command_dispatcher = CommandDispatcher(commands)
