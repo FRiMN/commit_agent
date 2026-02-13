@@ -6,8 +6,16 @@
 # ///
 import sys
 
-from commands.commands import UndoCommand, ExitCommand, SaveCommand, CommitCommand, ShowDiffCommand
 from commands.dispatcher import CommandDispatcher
+from commands.commands import (
+    AbstractCommand,
+    CommitCommand,
+    ExitCommand,
+    HelpCommand,
+    SaveCommand,
+    ShowDiffCommand,
+    UndoCommand,
+)
 from git_provider import ShellGitProvider
 from history import History, HistoryMessage, HistoryMessageRole
 from llm_providers.ollama import OllamaLlmProvider
@@ -48,22 +56,23 @@ SYSTEM_PROMPT = """# Commit Message Composer
 
 view = View()
 llm_provider = OllamaLlmProvider(
-    "mistral-large-3:675b-cloud",
-    "http://localhost:11434",
-    view
+    "mistral-large-3:675b-cloud", "http://localhost:11434", view
 )
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
 
+help_command = HelpCommand(view)
 commands = (
     UndoCommand(history, view),
     ExitCommand(),
     SaveCommand(history, git_provider, view),
     CommitCommand(history, git_provider, view),
     ShowDiffCommand(git_provider, pager),
+    help_command,
 )
 command_dispatcher = CommandDispatcher(commands)
+help_command.set_command_dispatcher(command_dispatcher)
 
 
 def assistant_think(user_input: str | None):
@@ -100,14 +109,13 @@ if __name__ == "__main__":
     if samples:
         samples_msg = HistoryMessage(
             role=HistoryMessageRole.user,
-            content=f"Вот примеры сообщений коммитов из вашего репозитория:\n{samples}"
+            content=f"Вот примеры сообщений коммитов из вашего репозитория:\n{samples}",
         )
         history.talk_history.append(samples_msg)
 
     diff = git_provider.get_last_diff()
     diff_msg = HistoryMessage(
-        role=HistoryMessageRole.user,
-        content=f"Вот diff изменений:\n{diff}"
+        role=HistoryMessageRole.user, content=f"Вот diff изменений:\n{diff}"
     )
     history.talk_history.append(diff_msg)
 
