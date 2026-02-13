@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Iterable, TYPE_CHECKING
 
 from git_provider import AbstractGitProvider
-from history import History
+from history import History, HistoryMessageRole
 from pager_provider import AbstractPagerProvider
 from view import View
 
@@ -28,7 +28,13 @@ class UndoCommand(AbstractCommand):
         self.view = view
 
     def __call__(self):
-        self.history.talk_history.pop()
+        if self.history.talk_history[-1].role == HistoryMessageRole.user:
+            self.history.talk_history.pop()
+        else:
+            # Удаляем и сообщение юзера и сообщение ассистента
+            self.history.talk_history.pop()
+            self.history.talk_history.pop()
+
         self.view.show_info("Последнее изменение сообщения коммита отменено.")
         self.view.show_current_commit_message(self.history.current_message)
 
