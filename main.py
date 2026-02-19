@@ -95,6 +95,7 @@ if __name__ == "__main__":
     history.talk_history.append(diff_msg)
 
     try:
+        help_command()
         loop()
     except (KeyboardInterrupt, EOFError):
         view.show_error("Прерываю выполнение.")
