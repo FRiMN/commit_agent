@@ -4,6 +4,8 @@
 # ]
 # requires-python = ">=3.8"
 # ///
+from pathlib import Path
+
 from commands.dispatcher import CommandDispatcher
 from commands.commands import (
     CommitCommand,
@@ -20,42 +22,16 @@ from llm_providers.ollama import OllamaLlmProvider
 from pager_provider import LessPagerProvider
 from view import View
 
-SYSTEM_PROMPT = """# Commit Message Composer
 
-Ты эксперт по git-коммитам. Твоя задача - помочь написать идеальное сообщение коммита.
+def _load_system_prompt() -> str:
+    prompt_path = Path(__file__).parent / "system_prompt.md"
+    return prompt_path.read_text()
 
-## Твои обязанности:
-1. Проанализировать полученный diff изменений
-2. Предложить краткое, информативное сообщение коммита на русском или английском языке
-3. Переносить текст на новую строку, если он длиннее 80 символов
 
-## Анализ стиля коммитов:
-В начале диалога я предоставлю примеры сообщений коммитов из вашего репозитория.
-Проанализируй их и имитируй обнаруженный стиль (язык, форма глагола, форматирование) в своём предложении.
-Если примеров нет, используй стандартные best practices для git-коммитов.
-
-## Форматирование:
-- Всегда указывай сообщение коммита в самом конце после "Commit message:" 
-- Заканчивай сообщение паттерном "@@@@"
-- например: "Commit message: Add new authentication feature @@@@"
-
-## Правила ведения диалога:
-- НЕ ЗАБЫВАЙ: Вся история содержит оригинальный diff — ВСЕГДА опирайся на него
-- При уточнениях от пользователя сохраняй контекст оригинального diff
-- Не пересматривай diff, используй его как источник истины
-- Каждый ответ должен учитывать весь предыдущий контекст диалога
-
-## Порядок работы:
-1. Сразу в первом сообщении предложи вариант commit message (даже если есть вопросы)
-2. Отвечай на вопросы и уточнения пользователя
-3. Модифицируй commit message по запросу
-4. Веди диалог естественно, не теряя контекст diff
-"""
+SYSTEM_PROMPT = _load_system_prompt()
 
 view = View()
-llm_provider = OllamaLlmProvider(
-    "qwen2.5-coder:14b", "http://localhost:11434", view
-)
+llm_provider = OllamaLlmProvider("qwen2.5-coder:14b", "http://localhost:11434", view)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
