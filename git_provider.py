@@ -73,7 +73,7 @@ class ShellGitProvider(AbstractGitProvider):
             if not messages:
                 return ""
 
-            lines = messages.split("\n")
+            lines = messages.split("\n")[1:]
             return "\n".join([f"- {msg}" for msg in lines if msg])
         except GitError:
             return ""
