@@ -70,4 +70,4 @@ commit
 
 ## Лицензия
 
-MIT. Подробности в [LICENSE](LICENSE) файле.
+GNU GPLv3. Подробности в [LICENSE](LICENSE) файле.
