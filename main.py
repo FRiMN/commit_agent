@@ -4,6 +4,7 @@
 # ]
 # requires-python = ">=3.8"
 # ///
+import argparse
 from pathlib import Path
 
 from commands.dispatcher import CommandDispatcher
@@ -11,6 +12,7 @@ from commands.commands import (
     CommitCommand,
     ExitCommand,
     HelpCommand,
+    PRCommand,
     SaveCommand,
     ShowDiffCommand,
     UndoCommand,
@@ -23,29 +25,59 @@ from pager_provider import LessPagerProvider
 from view import View
 
 
-def _load_system_prompt() -> str:
-    prompt_path = Path(__file__).parent / "system_prompt.md"
+def _load_system_prompt(mode: str = "commit") -> str:
+    prompt_file = "system_prompt_pr.md" if mode == "pr" else "system_prompt.md"
+    prompt_path = Path(__file__).parent / prompt_file
     return prompt_path.read_text()
 
 
-SYSTEM_PROMPT = _load_system_prompt()
+def _parse_args():
+    parser = argparse.ArgumentParser(description="Git commit message assistant")
+    parser.add_argument(
+        "--pr", "--mr",
+        action="store_true",
+        dest="pr_mode",
+        help="PR/MR description mode: generate a full PR/MR description from branch diff and commits",
+    )
+    parser.add_argument(
+        "--base",
+        type=str,
+        default=None,
+        help="Base branch to merge into (default: auto-detect main/master)",
+    )
+    return parser.parse_args()
+
 
 view = View()
-llm_provider = OllamaLlmProvider("qwen2.5-coder:14b", "http://localhost:11434", view)
+args = _parse_args()
+
+model = "ministral-3:8b"
+# model = "glm-4.7:cloud"
+llm_provider = OllamaLlmProvider(model, "http://192.168.1.10:11434", view)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
 
+mode = "pr" if args.pr_mode else "commit"
+SYSTEM_PROMPT = _load_system_prompt(mode)
+
 help_command = HelpCommand(view)
-commands = (
+commands = [
     UndoCommand(history, view),
     ExitCommand(),
-    SaveCommand(history, git_provider, view),
-    CommitCommand(history, git_provider, view),
-    ShowDiffCommand(git_provider, pager),
     HistoryCommand(history, pager),
     help_command,
-)
+]
+
+if mode == "pr":
+    commands.append(PRCommand(history, view))
+else:
+    commands.extend([
+        SaveCommand(history, git_provider, view),
+        CommitCommand(history, git_provider, view),
+        ShowDiffCommand(git_provider, pager),
+    ])
+
 command_dispatcher = CommandDispatcher(commands)
 help_command.set_command_dispatcher(command_dispatcher)
 
@@ -54,7 +86,10 @@ def assistant_think(user_input: str | None):
     view.show_thinking()
     reply = history.assistant_think(user_input)
     view.show_reply(reply)
-    view.show_current_commit_message(history.current_message)
+    if mode == "pr":
+        view.show_current_commit_message(history.current_pr_message)
+    else:
+        view.show_current_commit_message(history.current_message)
 
 
 def loop():
@@ -88,11 +123,31 @@ if __name__ == "__main__":
         )
         history.talk_history.append(samples_msg)
 
-    diff = git_provider.get_last_diff()
-    diff_msg = HistoryMessage(
-        role=HistoryMessageRole.user, content=f"Вот diff изменений:\n{diff}"
-    )
-    history.talk_history.append(diff_msg)
+    # Load diff based on mode
+    if mode == "pr":
+        base_branch = args.base if args.base else git_provider.get_default_branch()
+        view.show_debug(f"Base branch: {base_branch}")
+
+        branch_diff = git_provider.get_branch_diff(base_branch)
+        diff_msg = HistoryMessage(
+            role=HistoryMessageRole.user,
+            content=f"Вот diff изменений текущей ветки относительно {base_branch}:\n{branch_diff}",
+        )
+        history.talk_history.append(diff_msg)
+
+        branch_commits = git_provider.get_branch_commits(base_branch)
+        if branch_commits:
+            commits_msg = HistoryMessage(
+                role=HistoryMessageRole.user,
+                content=f"Вот коммиты текущей ветки:\n{branch_commits}",
+            )
+            history.talk_history.append(commits_msg)
+    else:
+        diff = git_provider.get_last_diff()
+        diff_msg = HistoryMessage(
+            role=HistoryMessageRole.user, content=f"Вот diff изменений:\n{diff}"
+        )
+        history.talk_history.append(diff_msg)
 
     try:
         help_command()

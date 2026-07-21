@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import List
@@ -30,7 +31,17 @@ class History(object):
             return ""
 
         message = self.talk_history[-1].content
-        return message.split("Commit message:")[-1].strip().split("@@@@")[0]
+        match = re.search(r"<commit_message>(.*?)</commit_message>", message, re.DOTALL)
+        return match.group(1).strip() if match else ""
+
+    @property
+    def current_pr_message(self) -> str:
+        if not self.talk_history:
+            return ""
+
+        message = self.talk_history[-1].content
+        match = re.search(r"<pr_description>(.*?)</pr_description>", message, re.DOTALL)
+        return match.group(1).strip() if match else ""
 
     def assistant_think(self, prompt: str | None) -> str:
         if prompt:
@@ -39,7 +50,20 @@ class History(object):
 
         reply = self.provider(self.talk_history)
 
+        # if "<commit_message>" not in reply:
+        #     reminder = HistoryMessage(
+        #         role=HistoryMessageRole.user,
+        #         content="Ты забыл обернуть сообщение коммита в теги <commit_message>...</commit_message>. Повтори ответ.",
+        #     )
+        #     self.talk_history.append(reminder)
+        #     reply = self.provider(self.talk_history)
+
         assist_msg = HistoryMessage(role=HistoryMessageRole.assistant, content=reply)
         self.talk_history.append(assist_msg)
 
-        return reply.split("Commit message:")[0] + reply.split("@@@@")[1]
+        return re.sub(
+            r"<commit_message>.*?</commit_message>|<pr_description>.*?</pr_description>",
+            "",
+            reply,
+            flags=re.DOTALL,
+        ).strip()
