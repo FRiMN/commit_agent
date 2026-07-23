@@ -40,7 +40,7 @@ class History(object):
             return ""
 
         message = self.talk_history[-1].content
-        match = re.search(r"<pr_description>(.*?)</pr_description>", message, re.DOTALL)
+        match = re.search(r"<?pr_description>(.*?)</pr_description>", message, re.DOTALL)
         return match.group(1).strip() if match else ""
 
     def assistant_think(self, prompt: str | None) -> str:
