@@ -12,6 +12,11 @@ class HistoryMessageRole(StrEnum):
     system = "system"
 
 
+class Mode(StrEnum):
+    commit = "commit"
+    pr = "pr"
+
+
 @dataclass
 class HistoryMessage:
     role: HistoryMessageRole
@@ -42,6 +47,23 @@ class History(object):
         message = self.talk_history[-1].content
         match = re.search(r"<?pr_description>(.*?)</pr_description>", message, re.DOTALL)
         return match.group(1).strip() if match else ""
+
+    def review_with_agent(self, text: str, system_prompt: str) -> str:
+        temp_history = [
+            HistoryMessage(role=HistoryMessageRole.system, content=system_prompt),
+            HistoryMessage(role=HistoryMessageRole.user, content=f"Проверь это сообщение:\n\n{text}"),
+        ]
+        return self.provider(temp_history)
+
+    @staticmethod
+    def parse_review_result(response: str) -> tuple[bool, str]:
+        status_match = re.search(r"<review_status>(.*?)</review_status>", response, re.DOTALL)
+        is_ok = bool(status_match and status_match.group(1).strip() == "ok")
+
+        issues_match = re.search(r"<review_issues>(.*?)</review_issues>", response, re.DOTALL)
+        issues = issues_match.group(1).strip() if issues_match else ""
+
+        return is_ok, issues
 
     def assistant_think(self, prompt: str | None) -> str:
         if prompt:

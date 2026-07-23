@@ -13,21 +13,25 @@ from commands.commands import (
     ExitCommand,
     HelpCommand,
     PRCommand,
+    ReviewCommand,
     SaveCommand,
     ShowDiffCommand,
     UndoCommand,
     HistoryCommand,
 )
 from git_provider import ShellGitProvider
-from history import History, HistoryMessage, HistoryMessageRole
+from history import History, HistoryMessage, HistoryMessageRole, Mode
 from llm_providers.ollama import OllamaLlmProvider
 from pager_provider import LessPagerProvider
 from view import View
 
 
-def _load_system_prompt(mode: str = "commit") -> str:
-    prompt_file = "system_prompt_pr.md" if mode == "pr" else "system_prompt.md"
-    prompt_path = Path(__file__).parent / prompt_file
+def _load_system_prompt(mode: Mode) -> str:
+    prompt_files = {
+        Mode.commit: "system_prompt.md",
+        Mode.pr: "system_prompt_pr.md",
+    }
+    prompt_path = Path(__file__).parent / prompt_files[mode]
     return prompt_path.read_text()
 
 
@@ -58,18 +62,20 @@ history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
 
-mode = "pr" if args.pr_mode else "commit"
+mode = Mode.pr if args.pr_mode else Mode.commit
 SYSTEM_PROMPT = _load_system_prompt(mode)
+REVIEWER_SYSTEM_PROMPT = Path(__file__).parent.joinpath("system_prompt_reviewer.md").read_text()
 
 help_command = HelpCommand(view)
-commands = [
+commands: list = [
     UndoCommand(history, view),
     ExitCommand(),
     HistoryCommand(history, pager),
+    ReviewCommand(history, view, mode, REVIEWER_SYSTEM_PROMPT),
     help_command,
 ]
 
-if mode == "pr":
+if mode == Mode.pr:
     commands.append(PRCommand(history, view))
 else:
     commands.extend([
@@ -86,7 +92,7 @@ def assistant_think(user_input: str | None):
     view.show_thinking()
     reply = history.assistant_think(user_input)
     view.show_reply(reply)
-    if mode == "pr":
+    if mode == Mode.pr:
         view.show_current_commit_message(history.current_pr_message)
     else:
         view.show_current_commit_message(history.current_message)
@@ -115,7 +121,7 @@ if __name__ == "__main__":
     sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=SYSTEM_PROMPT)
     history.talk_history.append(sys_msg)
 
-    if mode == "pr":
+    if mode == Mode.pr:
         base_branch = args.base if args.base else git_provider.get_default_branch()
         view.show_debug(f"Base branch: {base_branch}")
 
