@@ -115,25 +115,9 @@ if __name__ == "__main__":
     sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=SYSTEM_PROMPT)
     history.talk_history.append(sys_msg)
 
-    samples = git_provider.get_commit_messages_samples()
-    if samples:
-        samples_msg = HistoryMessage(
-            role=HistoryMessageRole.user,
-            content=f"Вот примеры сообщений коммитов из вашего репозитория:\n{samples}",
-        )
-        history.talk_history.append(samples_msg)
-
-    # Load diff based on mode
     if mode == "pr":
         base_branch = args.base if args.base else git_provider.get_default_branch()
         view.show_debug(f"Base branch: {base_branch}")
-
-        branch_diff = git_provider.get_branch_diff(base_branch)
-        diff_msg = HistoryMessage(
-            role=HistoryMessageRole.user,
-            content=f"Вот diff изменений текущей ветки относительно {base_branch}:\n{branch_diff}",
-        )
-        history.talk_history.append(diff_msg)
 
         branch_commits = git_provider.get_branch_commits(base_branch)
         if branch_commits:
@@ -142,7 +126,22 @@ if __name__ == "__main__":
                 content=f"Вот коммиты текущей ветки:\n{branch_commits}",
             )
             history.talk_history.append(commits_msg)
+
+        branch_diff = git_provider.get_branch_diff(base_branch)
+        diff_msg = HistoryMessage(
+            role=HistoryMessageRole.user,
+            content=f"Вот diff изменений текущей ветки относительно {base_branch}:\n{branch_diff}",
+        )
+        history.talk_history.append(diff_msg)
     else:
+        samples = git_provider.get_commit_messages_samples()
+        if samples:
+            samples_msg = HistoryMessage(
+                role=HistoryMessageRole.user,
+                content=f"Вот примеры сообщений коммитов из текущего репозитория:\n{samples}",
+            )
+            history.talk_history.append(samples_msg)
+
         diff = git_provider.get_last_diff()
         diff_msg = HistoryMessage(
             role=HistoryMessageRole.user, content=f"Вот diff изменений:\n{diff}"
