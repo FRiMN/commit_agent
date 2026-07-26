@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from prompt_toolkit import PromptSession
+from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.styles import Style
+from prompt_toolkit import print_formatted_text as cprint
 
 
 class Colors:
@@ -42,33 +43,33 @@ class View(object):
         )
 
     @staticmethod
-    def cprint(text: str, color: str = Colors.RESET, end: str = "\n"):
-        print(f"{color}{text}{Colors.RESET}", end=end)
+    def cprint(text: str, color: str = "p"):
+        cprint(HTML(f"<{color}>{text}</{color}>"))
 
     def wait_user_input(self) -> str:
         return self._prompt.prompt().strip()
 
     def show_question(self, text: str):
-        self.cprint(text, Colors.CYAN, end="")
+        self.cprint(text, "cyan")
 
     def show_thinking(self):
-        self.cprint("Думаю...", Colors.YELLOW)
+        self.cprint("Думаю...", "orange")
 
     def show_process(self, text: str):
-        self.cprint(text, Colors.YELLOW)
+        self.cprint(text, "orange")
 
     def show_info(self, text: str):
-        self.cprint(text, Colors.BLUE)
+        self.cprint(text, "blue")
 
     def show_error(self, text: str):
-        self.cprint(text, Colors.RED)
+        self.cprint(text, "red")
 
     def show_current_commit_message(self, text: str):
         self.show_info("Текущее сообщение коммита:")
-        self.cprint(text, Colors.RESET + Colors.BOLD)
+        self.cprint(text)
 
     def show_reply(self, text: str):
-        self.cprint(text, Colors.MAGENTA)
+        self.cprint(text, "magenta")
 
     def show_debug(self, text: str):
-        self.cprint(text, Colors.GRAY)
+        self.cprint(text, "gray")
