@@ -137,12 +137,12 @@ if __name__ == "__main__":
             )
             history.talk_history.append(commits_msg)
 
-        branch_diff = git_provider.get_branch_diff(base_branch)
-        diff_msg = HistoryMessage(
-            role=HistoryMessageRole.user,
-            content=f"Вот diff изменений текущей ветки относительно {base_branch}:\n{branch_diff}",
-        )
-        history.talk_history.append(diff_msg)
+        # branch_diff = git_provider.get_branch_diff(base_branch)
+        # diff_msg = HistoryMessage(
+        #     role=HistoryMessageRole.user,
+        #     content=f"Вот diff изменений текущей ветки относительно {base_branch}:\n{branch_diff}",
+        # )
+        # history.talk_history.append(diff_msg)
     else:
         samples = git_provider.get_commit_messages_samples()
         if samples:
