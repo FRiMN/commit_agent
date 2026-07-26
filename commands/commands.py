@@ -69,23 +69,6 @@ class CommitCommand(SaveCommand):
     help_text = "Alias for /save. Save the commit message and amend the last commit."
 
 
-class PRCommand(AbstractCommand):
-    trigger = "/pr"
-    help_text = "Display the generated PR/MR description for copy-paste."
-
-    def __init__(self, history: History, view: View):
-        self.history = history
-        self.view = view
-
-    def __call__(self):
-        pr_message = self.history.current_pr_message
-        if pr_message:
-            self.view.show_info("PR/MR description:")
-            self.view.show_reply(pr_message)
-        else:
-            self.view.show_error("No PR/MR description found in the conversation.")
-
-
 class ShowDiffCommand(AbstractCommand):
     trigger = "/diff"
     help_text = "Show the git diff of the last commit."

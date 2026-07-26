@@ -39,15 +39,6 @@ class History(object):
         match = re.search(r"<commit_message>(.*?)</commit_message>", message, re.DOTALL)
         return match.group(1).strip() if match else ""
 
-    @property
-    def current_pr_message(self) -> str:
-        if not self.talk_history:
-            return ""
-
-        message = self.talk_history[-1].content
-        match = re.search(r"<?pr_description>(.*?)</pr_description>", message, re.DOTALL)
-        return match.group(1).strip() if match else ""
-
     def review_with_agent(self, text: str, system_prompt: str) -> str:
         temp_history = [
             HistoryMessage(role=HistoryMessageRole.system, content=system_prompt),
@@ -65,27 +56,33 @@ class History(object):
 
         return is_ok, issues
 
+    def _prepare_assist_message(self, reply: str) -> str:
+        assist_msg = HistoryMessage(role=HistoryMessageRole.assistant, content=reply)
+        self.talk_history.append(assist_msg)
+
+        return re.sub(
+            r"<commit_message>.*?</commit_message>",
+            "",
+            reply,
+            flags=re.DOTALL,
+        ).strip()
+
     def assistant_think(self, prompt: str | None) -> str:
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
 
         reply = self.provider(self.talk_history)
+        return self._prepare_assist_message(reply)
 
-        # if "<commit_message>" not in reply:
-        #     reminder = HistoryMessage(
-        #         role=HistoryMessageRole.user,
-        #         content="Ты забыл обернуть сообщение коммита в теги <commit_message>...</commit_message>. Повтори ответ.",
-        #     )
-        #     self.talk_history.append(reminder)
-        #     reply = self.provider(self.talk_history)
+    def assistant_think_stream(self, prompt: str | None, on_chunk) -> str:
+        if prompt:
+            user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
+            self.talk_history.append(user_msg)
 
-        assist_msg = HistoryMessage(role=HistoryMessageRole.assistant, content=reply)
-        self.talk_history.append(assist_msg)
+        reply = ""
+        for chunk in self.provider.stream(self.talk_history):
+            reply += chunk
+            on_chunk(chunk)
 
-        return re.sub(
-            r"<commit_message>.*?</commit_message>|<pr_description>.*?</pr_description>",
-            "",
-            reply,
-            flags=re.DOTALL,
-        ).strip()
+        return self._prepare_assist_message(reply)

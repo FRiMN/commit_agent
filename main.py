@@ -13,7 +13,6 @@ from commands.commands import (
     CommitCommand,
     ExitCommand,
     HelpCommand,
-    PRCommand,
     SaveCommand,
     ShowDiffCommand,
     UndoCommand,
@@ -77,14 +76,12 @@ commands: list = [
     help_command,
 ]
 
-if mode == Mode.pr:
-    commands.append(PRCommand(history, view))
-else:
-    commands.extend([
+if mode == Mode.commit:
+    commands = [
         SaveCommand(history, git_provider, view),
         CommitCommand(history, git_provider, view),
         ShowDiffCommand(git_provider, pager),
-    ])
+    ] + commands
 
 command_dispatcher = CommandDispatcher(commands)
 help_command.set_command_dispatcher(command_dispatcher)
@@ -93,11 +90,9 @@ view.set_completer_words([cmd.trigger for cmd in commands])
 
 def assistant_think(user_input: str | None):
     view.show_thinking()
-    reply = history.assistant_think(user_input)
-    view.show_reply(reply)
-    if mode == Mode.pr:
-        view.show_current_commit_message(history.current_pr_message)
-    else:
+    history.assistant_think_stream(user_input, view.stream_write)
+    view.stream_end()
+    if mode == Mode.commit:
         view.show_current_commit_message(history.current_message)
 
 

@@ -34,8 +34,11 @@ class View(object):
         )
 
     @staticmethod
-    def cprint(text: str, tag: str = "p"):
-        cprint(HTML(f"<{tag}>{text}</{tag}>"), style=STYLE)
+    def cprint(text: str, tag: str | None = "p", end: str = "\n"):
+        if tag:
+            text = HTML(f"<{tag}>{text}</{tag}>")
+
+        cprint(text, style=STYLE, flush=True, end=end)
 
     def wait_user_input(self) -> str:
         return self._prompt.prompt().strip()
@@ -55,6 +58,12 @@ class View(object):
 
     def show_reply(self, text: str):
         self.cprint(text, "reply")
+
+    def stream_write(self, chunk: str):
+        self.cprint(chunk, None, "")
+
+    def stream_end(self):
+        self.cprint("\n", None)
 
     def show_debug(self, text: str):
         self.cprint(text, "debug")

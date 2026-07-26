@@ -9,6 +9,9 @@ class AbstractLlmProvider(object):
     def __call__(self, messages: List[HistoryMessage]) -> str:
         raise NotImplementedError()
 
+    def stream(self, messages: List[HistoryMessage]):
+        raise NotImplementedError()
+
 
 class LLMError(Exception):
     """Ошибка взаимодействия с провайдером LLM."""

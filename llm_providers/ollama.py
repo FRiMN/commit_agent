@@ -1,3 +1,4 @@
+import json
 from dataclasses import asdict
 from typing import List
 
@@ -37,8 +38,41 @@ class OllamaLlmProvider(AbstractLlmProvider):
         except (KeyError, ValueError) as e:
             raise LLMError(f"Некорректный ответ от Ollama: {e}") from e
 
+    def _call_ollama_stream(self, messages: List[dict]):
+        """
+        Отправляет запрос к /api/chat Ollama и возвращает текст ответа ассистента чанками (стриминг).
+        """
+        payload = {
+            "model": self.model,
+            # Сообщения уже в подходящем формате
+            "messages": messages,
+            "stream": True,
+        }
+        try:
+            resp = requests.post(f"{self._url}/api/chat", json=payload, stream=True, timeout=self._timeout)
+            resp.raise_for_status()
+            for line in resp.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+
+                data = json.loads(line)
+                content = data.get("message", {}).get("content", "")
+                if content:
+                    yield content
+
+                if data.get("done"):
+                    break
+        except requests.exceptions.RequestException as e:
+            raise LLMError(f"Ошибка соединения с Ollama: {e}") from e
+        except (KeyError, ValueError) as e:
+            raise LLMError(f"Некорректный ответ от Ollama: {e}") from e
+
     def __call__(self, messages: List[HistoryMessage]) -> str:
         messages = [asdict(m) for m in messages]
         return self._call_ollama(messages)
+
+    def stream(self, messages: List[HistoryMessage]):
+        messages = [asdict(m) for m in messages]
+        yield from self._call_ollama_stream(messages)
 
 
