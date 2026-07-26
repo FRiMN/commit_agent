@@ -54,16 +54,20 @@ def _parse_args():
 
 view = View()
 args = _parse_args()
+mode = Mode.pr if args.pr_mode else Mode.commit
 
-model = "ministral-3:8b"
+if mode == Mode.commit:
+    model = "ministral-3:8b"
+else:
+    model = "qwen3:14b"
 # model = "glm-4.7:cloud"
+
 llm_provider = OllamaLlmProvider(model, "http://192.168.1.10:11434", view)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
 
-mode = Mode.pr if args.pr_mode else Mode.commit
-SYSTEM_PROMPT = _load_system_prompt(mode)
+system_prompt = _load_system_prompt(mode)
 REVIEWER_SYSTEM_PROMPT = Path(__file__).parent.joinpath("system_prompt_reviewer.md").read_text()
 
 help_command = HelpCommand(view)
@@ -118,7 +122,7 @@ def loop():
 
 
 if __name__ == "__main__":
-    sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=SYSTEM_PROMPT)
+    sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=system_prompt)
     history.talk_history.append(sys_msg)
 
     if mode == Mode.pr:
