@@ -43,9 +43,6 @@ class View(object):
     def show_thinking(self):
         self.cprint("Думаю...", "thinking")
 
-    def show_process(self, text: str):
-        self.cprint(text, "orange")
-
     def show_info(self, text: str):
         self.cprint(text, "info")
 

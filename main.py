@@ -14,7 +14,6 @@ from commands.commands import (
     ExitCommand,
     HelpCommand,
     PRCommand,
-    ReviewCommand,
     SaveCommand,
     ShowDiffCommand,
     UndoCommand,
@@ -69,14 +68,12 @@ git_provider = ShellGitProvider()
 pager = LessPagerProvider()
 
 system_prompt = _load_system_prompt(mode)
-REVIEWER_SYSTEM_PROMPT = Path(__file__).parent.joinpath("system_prompt_reviewer.md").read_text()
 
 help_command = HelpCommand(view)
 commands: list = [
     UndoCommand(history, view),
     ExitCommand(),
     HistoryCommand(history, pager),
-    ReviewCommand(history, view, mode, REVIEWER_SYSTEM_PROMPT),
     help_command,
 ]
 
