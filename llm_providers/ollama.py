@@ -9,7 +9,7 @@ from view import View
 
 
 class OllamaLlmProvider(AbstractLlmProvider):
-    _timeout = 60
+    _timeout = 60 * 5
 
     def __init__(self, model: str, url: str, view: View):
         self._url = url
@@ -17,7 +17,7 @@ class OllamaLlmProvider(AbstractLlmProvider):
 
         view.show_debug(f"Используется модель {model}")
 
-    def _call_ollama(self, messages: List[HistoryMessage]) -> str:
+    def _call_ollama(self, messages: List[dict]) -> str:
         """
         Отправляет запрос к /api/chat Ollama и возвращает текст ответа ассистента.
         """

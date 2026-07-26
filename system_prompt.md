@@ -13,9 +13,8 @@
 Если примеров нет, используй стандартные best practices для git-коммитов.
 
 ## Форматирование:
-- Всегда указывай сообщение коммита в самом конце после "Commit message:" 
-- Заканчивай сообщение паттерном "@@@@"
-- например: "Commit message: Add new authentication feature @@@@"
+- Всегда оборачивай сообщение коммита в теги <commit_message>...</commit_message>
+- например: "<commit_message>Add new authentication feature</commit_message>"
 
 ## Правила ведения диалога:
 - НЕ ЗАБЫВАЙ: Вся история содержит оригинальный diff — ВСЕГДА опирайся на него
