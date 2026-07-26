@@ -1,6 +1,7 @@
 # /// script
 # dependencies = [
 #   "requests",
+#   "prompt-toolkit",
 # ]
 # requires-python = ">=3.8"
 # ///
@@ -90,6 +91,7 @@ else:
 
 command_dispatcher = CommandDispatcher(commands)
 help_command.set_command_dispatcher(command_dispatcher)
+view.set_completer_words([cmd.trigger for cmd in commands])
 
 
 def assistant_think(user_input: str | None):
@@ -109,7 +111,6 @@ def loop():
         if not skip_think:
             assistant_think(user_input)
 
-        view.show_user_input_prefix()
         user_input = view.wait_user_input()
 
         skip_think = False
