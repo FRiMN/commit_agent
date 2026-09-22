@@ -132,7 +132,7 @@ def loop():
 
 
 if __name__ == "__main__":
-    sys_msg = HistoryMessage(role=HistoryMessageRole.system, content=system_prompt)
+    sys_msg = HistoryMessage(role=HistoryMessageRole.user, content=system_prompt)
     history.talk_history.append(sys_msg)
 
     if mode == Mode.pr:
