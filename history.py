@@ -15,6 +15,7 @@ class HistoryMessageRole(StrEnum):
 class Mode(StrEnum):
     commit = "commit"
     pr = "pr"
+    release = "release"
 
 
 @dataclass

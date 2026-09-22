@@ -26,6 +26,15 @@ class AbstractGitProvider(object):
     def get_branch_commits(self, base_branch: str | None = None) -> str:
         raise NotImplementedError()
 
+    def get_latest_tags(self) -> list[str]:
+        raise NotImplementedError()
+
+    def get_diff_between_tags(self, from_tag: str, to_tag: str) -> str:
+        raise NotImplementedError()
+
+    def get_commits_between_tags(self, from_tag: str, to_tag: str) -> str:
+        raise NotImplementedError()
+
 
 class ShellGitProvider(AbstractGitProvider):
     @staticmethod
@@ -145,3 +154,33 @@ class ShellGitProvider(AbstractGitProvider):
             return messages if messages else ""
         except GitError:
             return ""
+
+    def get_latest_tags(self) -> list[str]:
+        """
+        Возвращает список последних двух тегов с префиксом 'v'.
+        Первый элемент - самый свежий тег, второй - предыдущий.
+        """
+        try:
+            # Получаем список всех тегов, которые начинаются с v, отсортированных по дате создания (от новых к старым)
+            tags = self._run_command(["tag", "-l", "v*", "--sort=-creatordate"], check=False)
+            if not tags:
+                return []
+            
+            tag_list = tags.split("\n")
+            # Убираем пустые строки
+            tag_list = [t for t in tag_list if t]
+            return tag_list[:2]
+        except GitError:
+            return []
+
+    def get_diff_between_tags(self, from_tag: str, to_tag: str) -> str:
+        """
+        Возвращает diff между двумя тегами.
+        """
+        return self._run_command(["diff", f"{from_tag}...{to_tag}", "--no-color"])
+
+    def get_commits_between_tags(self, from_tag: str, to_tag: str) -> str:
+        """
+        Возвращает список коммитов между двумя тегами.
+        """
+        return self._run_command(["log", f"{from_tag}...{to_tag}", "--format=- %h %s"], check=False)

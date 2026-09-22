@@ -29,6 +29,7 @@ def _load_system_prompt(mode: Mode) -> str:
     prompt_files = {
         Mode.commit: "system_prompt.md",
         Mode.pr: "system_prompt_pr.md",
+        Mode.release: "system_prompt_release.md",
     }
     prompt_path = Path(__file__).parent / prompt_files[mode]
     return prompt_path.read_text()
@@ -43,6 +44,12 @@ def _parse_args():
         help="PR/MR description mode: generate a full PR/MR description from branch diff and commits",
     )
     parser.add_argument(
+        "--release",
+        action="store_true",
+        dest="release_mode",
+        help="Release description mode: generate release notes by comparing the latest two 'v' tags",
+    )
+    parser.add_argument(
         "--base",
         type=str,
         default=None,
@@ -53,10 +60,17 @@ def _parse_args():
 
 view = View()
 args = _parse_args()
-mode = Mode.pr if args.pr_mode else Mode.commit
+if args.release_mode:
+    mode = Mode.release
+elif args.pr_mode:
+    mode = Mode.pr
+else:
+    mode = Mode.commit
 
 if mode == Mode.commit:
     model = "ministral-3:8b"
+elif mode == Mode.release:
+    model = "nemotron-3-nano:4b"
 else:
     model = "qwen3:14b"
 # model = "glm-4.7:cloud"
@@ -129,13 +143,29 @@ if __name__ == "__main__":
                 content=f"Вот коммиты текущей ветки:\n{branch_commits}",
             )
             history.talk_history.append(commits_msg)
+    elif mode == Mode.release:
+        tags = git_provider.get_latest_tags()
+        if len(tags) < 2:
+            view.show_error("Не найдено достаточно тегов с префиксом 'v' для сравнения (нужно минимум 2).")
+        else:
+            latest_tag, previous_tag = tags
+            view.show_debug(f"Comparing {previous_tag} -> {latest_tag}")
 
-        # branch_diff = git_provider.get_branch_diff(base_branch)
-        # diff_msg = HistoryMessage(
-        #     role=HistoryMessageRole.user,
-        #     content=f"Вот diff изменений текущей ветки относительно {base_branch}:\n{branch_diff}",
-        # )
-        # history.talk_history.append(diff_msg)
+            commits = git_provider.get_commits_between_tags(previous_tag, latest_tag)
+            if commits:
+                commits_msg = HistoryMessage(
+                    role=HistoryMessageRole.user,
+                    content=f"Вот список коммитов между {previous_tag} и {latest_tag}:\n{commits}",
+                )
+                history.talk_history.append(commits_msg)
+
+            # diff = git_provider.get_diff_between_tags(previous_tag, latest_tag)
+            # if diff:
+            #     diff_msg = HistoryMessage(
+            #         role=HistoryMessageRole.user,
+            #         content=f"Вот diff изменений между {previous_tag} и {latest_tag}:\n{diff}",
+            #     )
+            #     history.talk_history.append(diff_msg)
     else:
         samples = git_provider.get_commit_messages_samples()
         if samples:
