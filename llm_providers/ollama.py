@@ -16,6 +16,7 @@ class OllamaLlmProvider(AbstractLlmProvider):
         self._url = url
         self.model = model
 
+        view.show_debug(f"Ollama на адресе {url}")
         view.show_debug(f"Используется модель {model}")
 
     def _call_ollama(self, messages: List[dict]) -> str:

@@ -21,6 +21,7 @@ from commands.commands import (
 from git_provider import ShellGitProvider
 from history import History, HistoryMessage, HistoryMessageRole, Mode
 from llm_providers.ollama import OllamaLlmProvider
+from llm_providers.llamacpp import LlamaCppLlmProvider
 from pager_provider import LessPagerProvider
 from view import View
 
@@ -69,6 +70,7 @@ else:
 
 if mode == Mode.commit:
     model = "ministral-3:8b"
+    # model = "Ministral-3-8B"
 elif mode == Mode.release:
     model = "nemotron-3-nano:4b"
 else:
@@ -76,6 +78,7 @@ else:
 # model = "glm-4.7:cloud"
 
 llm_provider = OllamaLlmProvider(model, "http://192.168.1.10:11434", view)
+# llm_provider = LlamaCppLlmProvider(model, "http://192.168.1.10:9931", view)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
