@@ -89,19 +89,22 @@ class LlamaCppLlmProvider(AbstractLlmProvider):
     def __call__(self, messages: List[HistoryMessage]) -> str:
         messages = merge_role_messages(messages)
         messages = [asdict(m) for m in messages]
+        assert len(messages), "Expected messages"
         return self._call_llamacpp(messages)
 
     def stream(self, messages: List[HistoryMessage]) -> Iterator[str]:
         messages = merge_role_messages(messages)
         messages = [asdict(m) for m in messages]
+        assert len(messages), "Expected messages"
         yield from self._call_llamacpp_stream(messages)
 
 
 def merge_role_messages(messages: List[HistoryMessage]) -> List[HistoryMessage]:
-    merged_messages = []
+    merged_messages: list[HistoryMessage] = []
     for m in messages:
-        prev_m = merged_messages[-1] if list(merged_messages) else None
+        prev_m = merged_messages[-1] if len(merged_messages) else None
         if not prev_m:
+            merged_messages.append(m)
             continue
 
         prev_m: HistoryMessage
