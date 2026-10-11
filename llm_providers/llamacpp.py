@@ -61,11 +61,10 @@ class LlamaCppLlmProvider(AbstractLlmProvider):
             )
             resp.raise_for_status()
             for line in resp.iter_lines(decode_unicode=True):
+                line = line.lstrip("data: ")
                 if not line:
                     continue
 
-                # Пропускаем строки SSE с исключительно data:finish
-                line = line.lstrip("data: ")
                 data = json.loads(line)
                 
                 # Разные LLM ответы могут приходить как отдельное сообщение
@@ -86,8 +85,7 @@ class LlamaCppLlmProvider(AbstractLlmProvider):
         except requests.exceptions.RequestException as e:
             raise LLMError(f"Ошибка соединения с llama.cpp: {e}") from e
         except (KeyError, ValueError) as e:
-            lines = list(resp.iter_lines(decode_unicode=True))
-            raise LLMError(f"Некорректный ответ от llama.cpp: {resp.content=}\n{lines=}") from e
+            raise LLMError(f"Некорректный ответ от llama.cpp: {resp.content=}") from e
 
     def __call__(self, messages: List[HistoryMessage]) -> str:
         messages = merge_role_messages(messages)
