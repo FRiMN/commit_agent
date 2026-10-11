@@ -85,7 +85,7 @@ class LlamaCppLlmProvider(AbstractLlmProvider):
         except requests.exceptions.RequestException as e:
             raise LLMError(f"Ошибка соединения с llama.cpp: {e}") from e
         except (KeyError, ValueError) as e:
-            raise LLMError(f"Некорректный ответ от llama.cpp: {resp.content=}") from e
+            raise LLMError(f"Некорректный ответ от llama.cpp: {line=}") from e
 
     def __call__(self, messages: List[HistoryMessage]) -> str:
         messages = merge_role_messages(messages)

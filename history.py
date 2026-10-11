@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import List
 
-from llm_providers.common import AbstractLlmProvider
+from llm_providers.common import AbstractLlmProvider, LLMError
 
 
 class HistoryMessageRole(StrEnum):
@@ -68,22 +68,31 @@ class History(object):
             flags=re.DOTALL,
         ).strip()
 
-    def assistant_think(self, prompt: str | None) -> str:
+    def assistant_think(self, prompt: str | None, on_error) -> str:
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
 
-        reply = self.provider(self.talk_history)
+        try:
+            reply = self.provider(self.talk_history)
+        except LLMError as e:
+            on_error(str(e))
+            return ""
+
         return self._prepare_assist_message(reply)
 
-    def assistant_think_stream(self, prompt: str | None, on_chunk) -> str:
+    def assistant_think_stream(self, prompt: str | None, on_chunk, on_error) -> str:
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
 
-        reply = ""
-        for chunk in self.provider.stream(self.talk_history):
-            reply += chunk
-            on_chunk(chunk)
+        try:
+            reply = ""
+            for chunk in self.provider.stream(self.talk_history):
+                reply += chunk
+                on_chunk(chunk)
+        except LLMError as e:
+            on_error(str(e))
+            return ""
 
         return self._prepare_assist_message(reply)

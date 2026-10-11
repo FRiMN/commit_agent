@@ -107,7 +107,7 @@ view.set_completer_words([cmd.trigger for cmd in commands])
 
 def assistant_think(user_input: str | None):
     view.show_thinking()
-    history.assistant_think_stream(user_input, view.stream_write)
+    history.assistant_think_stream(user_input, view.stream_write, view.show_error)
     view.stream_end()
     if mode == Mode.commit:
         view.show_current_commit_message(history.current_message)
