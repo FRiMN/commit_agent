@@ -69,16 +69,16 @@ else:
     mode = Mode.commit
 
 if mode == Mode.commit:
-    model = "ministral-3:8b"
-    # model = "Ministral-3-8B"
+    # model = "ministral-3:8b"
+    model = "Tiel-Coder-35B-A3B"
 elif mode == Mode.release:
     model = "nemotron-3-nano:4b"
 else:
     model = "qwen3:14b"
 # model = "glm-4.7:cloud"
 
-llm_provider = OllamaLlmProvider(model, "http://192.168.1.10:11434", view)
-# llm_provider = LlamaCppLlmProvider(model, "http://192.168.1.10:9931", view)
+# llm_provider = OllamaLlmProvider(model, "http://192.168.1.10:11434", view)
+llm_provider = LlamaCppLlmProvider(model, "http://192.168.1.10:9931", view)
 history = History(llm_provider)
 git_provider = ShellGitProvider()
 pager = LessPagerProvider()
