@@ -72,7 +72,9 @@ class LlamaCppLlmProvider(AbstractLlmProvider):
                 choices = data.get("choices", [])
                 if choices:
                     delta = choices[0].get("delta", {})
-                    content = delta.get("content", "")
+                    reasoning_content = delta.get("reasoning_content") or ""
+                    content = delta.get("content") or ""
+                    content = "".join([reasoning_content, content])
                     if content:
                         yield content
 
