@@ -1,4 +1,4 @@
-import xml
+import html
 from pathlib import Path
 
 from prompt_toolkit import PromptSession, HTML
@@ -36,14 +36,13 @@ class View(object):
 
     @staticmethod
     def cprint(text: str, tag: str | None = "p", end: str = "\n"):
+        # Raw ``<``, ``>`` and ``&`` break the XML parser prompt_toolkit uses, so
+        # they are turned into entities before the text is wrapped in tags.
+        text = html.escape(text)
         if tag:
             text = HTML(f"<{tag}>{text}</{tag}>")
 
-        try:
-            cprint(text, style=STYLE, flush=True, end=end)
-        except xml.parsers.expat.ExpatError as e:
-            print(f"{tag=}; {text=}")
-            raise e
+        cprint(text, style=STYLE, flush=True, end=end)
 
     def wait_user_input(self) -> str:
         return self._prompt.prompt().strip()
