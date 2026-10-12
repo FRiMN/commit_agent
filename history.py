@@ -38,8 +38,12 @@ class History(object):
             return ""
 
         message = self.talk_history[-1].content
-        match = re.search(r"<commit_message>(.*?)</commit_message>", message, re.DOTALL)
-        return match.group(1).strip() if match else ""
+        matches = re.findall(r"<commit_message>(.*?)</commit_message>", message, re.DOTALL)
+
+        if matches:
+            return matches[-1].strip()
+
+        return ""
 
     def review_with_agent(self, text: str, system_prompt: str) -> str:
         temp_history = [
@@ -58,18 +62,11 @@ class History(object):
 
         return is_ok, issues
 
-    def _prepare_assist_message(self, reply: str) -> str:
+    def _prepare_assist_message(self, reply: str):
         assist_msg = HistoryMessage(role=HistoryMessageRole.assistant, content=reply)
         self.talk_history.append(assist_msg)
 
-        return re.sub(
-            r"<commit_message>.*?</commit_message>",
-            "",
-            reply,
-            flags=re.DOTALL,
-        ).strip()
-
-    def assistant_think(self, prompt: str | None, view: View) -> str:
+    def assistant_think(self, prompt: str | None, view: View):
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
@@ -80,9 +77,9 @@ class History(object):
             view.show_error(str(e))
             return ""
 
-        return self._prepare_assist_message(reply)
+        self._prepare_assist_message(reply)
 
-    def assistant_think_stream(self, prompt: str | None, view: View) -> str:
+    def assistant_think_stream(self, prompt: str | None, view: View):
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
@@ -99,4 +96,4 @@ class History(object):
         else:
             view.stream_end()
 
-        return self._prepare_assist_message(reply)
+        self._prepare_assist_message(reply)
