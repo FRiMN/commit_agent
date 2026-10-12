@@ -1,4 +1,3 @@
-import html
 from pathlib import Path
 
 from prompt_toolkit import PromptSession, HTML
@@ -36,9 +35,6 @@ class View(object):
 
     @staticmethod
     def cprint(text: str, tag: str | None = "p", end: str = "\n"):
-        # Raw ``<``, ``>`` and ``&`` break the XML parser prompt_toolkit uses, so
-        # they are turned into entities before the text is wrapped in tags.
-        text = html.escape(text)
         if tag:
             text = HTML(f"<{tag}>{text}</{tag}>")
 
