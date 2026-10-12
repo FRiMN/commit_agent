@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import ftfy
+
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
@@ -35,6 +37,8 @@ class View(object):
 
     @staticmethod
     def cprint(text: str, tag: str | None = "p", end: str = "\n"):
+        # Могут быть проблемы с кодировкой
+        text = ftfy.fix_text(text)
         if tag:
             text = HTML(f"<{tag}>{text}</{tag}>")
 

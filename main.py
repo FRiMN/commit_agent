@@ -2,6 +2,7 @@
 # dependencies = [
 #   "requests",
 #   "prompt-toolkit",
+#   "ftfy",
 # ]
 # requires-python = ">=3.8"
 # ///
