@@ -1,3 +1,4 @@
+import xml
 from pathlib import Path
 
 from prompt_toolkit import PromptSession, HTML
@@ -38,7 +39,11 @@ class View(object):
         if tag:
             text = HTML(f"<{tag}>{text}</{tag}>")
 
-        cprint(text, style=STYLE, flush=True, end=end)
+        try:
+            cprint(text, style=STYLE, flush=True, end=end)
+        except xml.parsers.expat.ExpatError as e:
+            print(f"{tag=}; {text=}")
+            raise e
 
     def wait_user_input(self) -> str:
         return self._prompt.prompt().strip()
