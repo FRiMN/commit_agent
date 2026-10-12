@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import List
 
 from llm_providers.common import AbstractLlmProvider, LLMError
+from view import View
 
 
 class HistoryMessageRole(StrEnum):
@@ -68,7 +69,7 @@ class History(object):
             flags=re.DOTALL,
         ).strip()
 
-    def assistant_think(self, prompt: str | None, on_error) -> str:
+    def assistant_think(self, prompt: str | None, view: View) -> str:
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
@@ -76,12 +77,12 @@ class History(object):
         try:
             reply = self.provider(self.talk_history)
         except LLMError as e:
-            on_error(str(e))
+            view.show_error(str(e))
             return ""
 
         return self._prepare_assist_message(reply)
 
-    def assistant_think_stream(self, prompt: str | None, on_chunk, on_error) -> str:
+    def assistant_think_stream(self, prompt: str | None, view: View) -> str:
         if prompt:
             user_msg = HistoryMessage(role=HistoryMessageRole.user, content=prompt)
             self.talk_history.append(user_msg)
@@ -90,9 +91,12 @@ class History(object):
             reply = ""
             for chunk in self.provider.stream(self.talk_history):
                 reply += chunk
-                on_chunk(chunk)
+                view.stream_write(chunk)
         except LLMError as e:
-            on_error(str(e))
+            view.stream_end()
+            view.show_error(str(e))
             return ""
+        else:
+            view.stream_end()
 
         return self._prepare_assist_message(reply)
