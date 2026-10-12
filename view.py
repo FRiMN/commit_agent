@@ -1,3 +1,4 @@
+import html
 from pathlib import Path
 
 import ftfy
@@ -37,10 +38,12 @@ class View(object):
 
     @staticmethod
     def cprint(text: str, tag: str | None = "p", end: str = "\n"):
-        # Могут быть проблемы с кодировкой
+        # May have encoding issues
         text = ftfy.fix_text(text)
         if tag:
-            text = HTML(f"<{tag}>{text}</{tag}>")
+            # Escape so angle brackets in the text (e.g. <commit_message>)
+            # are treated as literal text, not XML tags, by prompt_toolkit's HTML parser.
+            text = HTML(f"<{tag}>{html.escape(text)}</{tag}>")
 
         cprint(text, style=STYLE, flush=True, end=end)
 
