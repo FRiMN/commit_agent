@@ -71,7 +71,9 @@ else:
 
 if mode == Mode.commit:
     # model = "ministral-3:8b"
-    model = "Tiel-Coder-35B-A3B"
+    # model = "Tiel-Coder-35B-A3B"
+    model = "Sharp-Spark-X2.5-4B"
+    # model = "Nail-Qwen3.6-35B-A3B"
 elif mode == Mode.release:
     model = "nemotron-3-nano:4b"
 else:
