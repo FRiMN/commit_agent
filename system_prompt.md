@@ -15,6 +15,7 @@ If there are no examples, use standard best practices for git commits.
 ## Formatting:
 - Always wrap the commit message in `<commit_message>...</commit_message>` tags
 - For example: "<commit_message>Add new authentication feature</commit_message>"
+- Remember that the message itself is on the first line. The comment is below. Do not break the heading.
 
 ## Dialogue Rules:
 - DO NOT FORGET: The entire history contains the original diff — ALWAYS rely on it
