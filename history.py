@@ -38,7 +38,7 @@ class History(object):
             return ""
 
         message = self.talk_history[-1].content
-        matches = re.findall(r"<commit_message>(.*?)</commit_message>", message, re.DOTALL)
+        matches = re.findall(r".*<commit_message>(.*?)</commit_message>", message, re.DOTALL)
 
         if matches:
             return matches[-1].strip()
